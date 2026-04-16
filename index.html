@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>el.js - Complete Examples</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.1/css/all.min.css"
+        integrity="sha512-2SwdPD6INVrV/lHTZbO2nodKhrnDdJK9/kg2XD1r9uGqPo1cUbujc+IYdlYdEErWNu69gVcYgdxlmVmzTWnetw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        .highlight { background-color: #fbbf24 !important; }
+        #output { white-space: pre-wrap; }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div id="app"></div>
+    <script src="./el.js"></script>
+    <script src="./layouting/layout.js"></script>
+    <script>
+      window.addEventListener('DOMContentLoaded', () => {
+        layout.addPage({
+          path: '/',
+          component: () => {
+            return el('div').child([
+              el('h2').text('Home Page'),
+              el('p').text('Use the buttons below to trigger notification, toast, and confirm features.'),
+              el('div').css({ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }).child([
+                el('button').text('Show Success Toast').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#16a34a', color: '#fff', cursor: 'pointer' }).click(() => {
+                  layout.toast('Operation successful!', { type: 'success', title: 'Success', duration: 3000 });
+                }),
+                el('button').text('Show Info Notification').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#2563eb', color: '#fff', cursor: 'pointer' }).click(() => {
+                  layout.notify({ title: 'Info', message: 'This is a notification message.', type: 'info', duration: 3500 });
+                }),
+                el('button').text('Show Confirm').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#1f2937', color: '#fff', cursor: 'pointer' }).click(() => {
+                  layout.confirm({
+                    title: 'Delete item?',
+                    message: 'Are you sure you want to delete this item? This action cannot be undone.',
+                    confirmText: 'Yes, delete',
+                    cancelText: 'Cancel',
+                    onConfirm: () => layout.toast('Item deleted', { type: 'success' }),
+                    onCancel: () => layout.toast('Canceled', { type: 'warning' }),
+                  });
+                }),
+                el('button').text('Show Custom Modal').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#8b5cf6', color: '#fff', cursor: 'pointer' }).click(() => {
+                  layout.customModal({
+                    title: 'Custom Modal',
+                    message: el('div').child([
+                      el('p').text('This is a custom modal with el content as message.'),
+                      el('ul').css({ paddingLeft: '1.2rem', marginTop: '0.75rem' }).child([
+                        el('li').text('Supports el object content'),
+                        el('li').text('Supports custom buttons'),
+                      ]),
+                    ]),
+                    buttons: [
+                      {
+                        text: 'Cancel',
+                        variant: 'outline',
+                        onClick: () => layout.toast('Modal dismissed', { type: 'warning' }),
+                      },
+                      {
+                        text: 'Save',
+                        variant: 'primary',
+                        onClick: () => layout.toast('Saved successfully', { type: 'success' }),
+                      },
+                    ],
+                  });
+                }),
+              ]),
+            ]);
+          },
+        })
+
+        layout.addPage({
+          path: '/about',
+          component: () => {
+            // Async component example - simulating API call
+            return new Promise((resolve) => {
+              setTimeout(() => {
+                resolve(
+                  el('div').child([
+                    el('h2').text('About Page'),
+                    el('p').text('This page was loaded with async component')
+                  ])
+                );
+              }, 1000); // Simulate 1.5s API delay
+            });
+          },
+        })
+
+        layout.addPage({
+          path: '/contact',
+          component: () => {
+            return el('div').text('Contact Page')
+          },
+        })
+
+        layout.addPage({
+          path: '/help',
+          component: () => {
+            return el('div').child([
+              el('h2').text('Help Page'),
+              el('p').text('Need assistance? This is the help section.'),
+            ])
+          },
+        })
+
+        layout.addPage({
+          path: '/settings',
+          component: () => {
+            return el('div').child([
+              el('h2').text('Settings Page'),
+              el('p').text('Use this page to configure your application settings.'),
+            ])
+          },
+        })
+
+        addNavbar([
+          { name: 'Home', page: '/' },
+          { name: 'About', page: '/about' },
+          { name: 'Contact', page: '/contact' },
+        ])
+
+        layout.addSideMenu([
+          { name: 'Home', page: '/', icon: 'fas fa-home' },
+          { 
+            name: 'Pages', 
+            icon: 'fas fa-file',
+            children: [
+              { name: 'About', page: '/about' },
+              { name: 'Contact', page: '/contact' }
+            ]
+          },
+          {
+            name: 'More',
+            icon: 'fas fa-layer-group',
+            children: [
+              { name: 'Help', page: '/help' },
+              { name: 'Settings', page: '/settings' }
+            ]
+          },
+        ])
+
+        // Set theme (default, blue, dark, light, purple, green, red, orange, teal, pink, gray)
+        setLayoutTheme('default')
+
+        layout.render()
+      })
+    </script>
+</body>
+
+</html>
