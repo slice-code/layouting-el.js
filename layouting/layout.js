@@ -256,7 +256,7 @@
 
   // Routing functions
   layout.addPage = function(config) {
-    pages[config.path] = config.component;
+    pages[config.path] = config;
   };
 
   layout.addSideMenu = function(menus) {
@@ -513,12 +513,13 @@ ${getThemeStyleCSS()}`;
   }
 
   function renderPage(path) {
-    if (!pages[path]) return;
+    const pageConfig = pages[path];
+    if (!pageConfig) return;
     
     // Show loader
     showLoader();
     
-    const component = pages[path]();
+    const component = pageConfig.component();
     
     // Check if component is a Promise (for async components)
     if (component && typeof component.then === 'function') {
@@ -564,7 +565,19 @@ ${getThemeStyleCSS()}`;
     }
   }
 
+  function shouldHideSidebarForPage() {
+    const pageConfig = pages[currentPage];
+    return !isMobile && pageConfig?.fullWidthDesktop;
+  }
+
   function updateSidebarState() {
+    if (shouldHideSidebarForPage()) {
+      if (!connector.sidebar) return;
+      el(connector.sidebar).css({ display: 'none' }).get();
+      el(connector.pagecontent).css(cssLayouting.desktop.pagecontent).get();
+      return;
+    }
+
     if (!isMobile && desktopHideMode) {
       updateDesktopSidebar();
     } else {
@@ -1435,7 +1448,9 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
         const sidebarCss = sidebarVisible ? cssLayouting.mobile.sidebarOpen : cssLayouting.mobile.sidebar;
         el(connector.sidebar).css(sidebarCss).get();
       }),
-      el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color }).text("Navbar title"),
+      el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color, cursor: 'pointer' }).text("Navbar title").click(() => {
+        layout.navigate('/');
+      }),
       el('div').link(connector, 'sidebarHideSwitchSlot'),
     ]),
     el('div').link(connector, 'navbarActions').css({ display: 'flex', alignItems: 'center', gap: '0.75rem' }).child([])
@@ -1478,6 +1493,7 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
         connector.sidebarHideSwitchSlot.style.display = isMobile ? 'none' : 'block';
       }
       renderNavbar();
+      updateSidebarState();
       
       el(connector.pagecontent).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].pagecontent).get();
     }

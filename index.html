@@ -117,10 +117,22 @@
           },
         })
 
+        layout.addPage({
+          path: '/full',
+          fullWidthDesktop: true,
+          component: () => {
+            return el('div').child([
+              el('h2').text('Full Width Page'),
+              el('p').text('This page hides the sidebar on desktop and uses the full layout width.'),
+            ])
+          },
+        })
+
         addNavbar([
           { name: 'Home', page: '/' },
           { name: 'About', page: '/about' },
           { name: 'Contact', page: '/contact' },
+          { name: 'Full Width', page: '/full' },
         ])
 
         layout.addSideMenu([

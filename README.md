@@ -85,6 +85,16 @@ layout.addPage({
 });
 ```
 
+Desktop-only full-width page (hides sidebar on desktop):
+
+```js
+layout.addPage({
+  path: '/full',
+  fullWidthDesktop: true,
+  component: () => el('div').text('Full width content with no sidebar'),
+});
+```
+
 ---
 
 ### Sidebar
