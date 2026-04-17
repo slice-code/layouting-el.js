@@ -1473,6 +1473,11 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
         el(connector.sidebar).css(cssLayouting.mobile.sidebar).get();
       }
       updateDesktopHoverArea();
+
+      if (connector.sidebarHideSwitchSlot) {
+        connector.sidebarHideSwitchSlot.style.display = isMobile ? 'none' : 'block';
+      }
+      renderNavbar();
       
       el(connector.pagecontent).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].pagecontent).get();
     }
