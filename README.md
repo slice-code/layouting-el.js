@@ -2,6 +2,8 @@
 
 A lightweight SPA layout module built on **el.js**. Provides navbar, sidebar, routing, themes, notifications, modals, and a desktop sidebar hide toggle — all without any framework.
 
+[![Buy me a coffee at Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gugusdarmayanto)
+
 ---
 
 ## 📁 Project Structure
