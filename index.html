@@ -128,11 +128,30 @@
           },
         })
 
+        layout.addPage({
+          path: '/login',
+          hideLayout: true,
+          component: () => {
+            return el('div').css({ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }).child([
+              el('div').css({ width: '320px', padding: '2rem', borderRadius: '12px', boxShadow: '0 16px 40px rgba(0,0,0,0.12)', backgroundColor: '#fff' }).child([
+                el('h2').text('Login').css({ marginBottom: '1rem' }),
+                el('input').attr('type', 'text').attr('placeholder', 'Email').css({ width: '100%', padding: '0.85rem', marginBottom: '0.75rem', borderRadius: '0.75rem', border: '1px solid #d1d5db' }),
+                el('input').attr('type', 'password').attr('placeholder', 'Password').css({ width: '100%', padding: '0.85rem', marginBottom: '1rem', borderRadius: '0.75rem', border: '1px solid #d1d5db' }),
+                el('button').text('Sign In').css({ width: '100%', padding: '0.85rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#2563eb', color: '#fff', cursor: 'pointer' }).click(() => {
+                  layout.toast('Logged in successfully', { type: 'success', title: 'Login' });
+                  layout.navigate('/');
+                }),
+              ])
+            ]);
+          },
+        })
+
         addNavbar([
           { name: 'Home', page: '/' },
           { name: 'About', page: '/about' },
           { name: 'Contact', page: '/contact' },
           { name: 'Full Width', page: '/full' },
+          { name: 'Login', page: '/login' },
         ])
 
         layout.addSideMenu([

@@ -85,7 +85,7 @@ layout.addPage({
 });
 ```
 
-Desktop-only full-width page (hides sidebar on desktop):
+Desktop-only full-width page (hides sidebar on desktop and shows a back button in navbar):
 
 ```js
 layout.addPage({
@@ -94,6 +94,18 @@ layout.addPage({
   component: () => el('div').text('Full width content with no sidebar'),
 });
 ```
+
+Login page (hides navbar and sidebar completely, useful for auth screens):
+
+```js
+layout.addPage({
+  path: '/login',
+  hideLayout: true,
+  component: () => el('div').text('Login page content'),
+});
+```
+
+> The navbar title is also clickable and navigates to `/` (home).
 
 ---
 

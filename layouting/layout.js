@@ -272,6 +272,17 @@
   function renderNavbar() {
     if (!connector.navbarActions) return;
     
+    if (shouldHideLayoutForPage()) {
+      if (connector.navbar) {
+        el(connector.navbar).css({ display: 'none' }).get();
+      }
+      return;
+    }
+
+    if (connector.navbar) {
+      el(connector.navbar).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar).get();
+    }
+    
     const dropdownColor = '#333';
 
     const switchTrackStyle = {
@@ -330,7 +341,7 @@
     // Render switch ke slot di sebelah kanan navbar title (desktop only)
     if (connector.sidebarHideSwitchSlot) {
       connector.sidebarHideSwitchSlot.innerHTML = '';
-      if (!isMobile) {
+      if (!isMobile && !shouldHideSidebarForPage()) {
         el(connector.sidebarHideSwitchSlot).child([
           el('div').link(connector, 'sidebarHideToggle').css(switchTrackStyle).attr('title', 'Toggle sidebar hide mode').child([
             el('div').link(connector, 'sidebarHideToggleHandle').css(switchHandleStyle)
@@ -345,6 +356,10 @@
           })
         ]).get();
       }
+    }
+
+    if (connector.navbarBackButton) {
+      el(connector.navbarBackButton).css({ display: !isMobile && shouldHideSidebarForPage() ? 'inline-flex' : 'none' }).get();
     }
   }
 
@@ -367,6 +382,10 @@
     renderSideMenu();
     renderNavbar();
     updateSidebarState();
+
+    if (shouldHideLayoutForPage()) {
+      if (connector.navbar) el(connector.navbar).css({ display: 'none' }).get();
+    }
   };
 
   layout.setTheme = function(themeName) {
@@ -565,9 +584,14 @@ ${getThemeStyleCSS()}`;
     }
   }
 
+  function shouldHideLayoutForPage() {
+    const pageConfig = pages[currentPage];
+    return Boolean(pageConfig?.hideLayout);
+  }
+
   function shouldHideSidebarForPage() {
     const pageConfig = pages[currentPage];
-    return !isMobile && pageConfig?.fullWidthDesktop;
+    return Boolean(pageConfig?.fullWidthDesktop || pageConfig?.hideLayout);
   }
 
   function updateSidebarState() {
@@ -1447,6 +1471,11 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
         sidebarVisible = !sidebarVisible;
         const sidebarCss = sidebarVisible ? cssLayouting.mobile.sidebarOpen : cssLayouting.mobile.sidebar;
         el(connector.sidebar).css(sidebarCss).get();
+      }),
+      el('a').link(connector, 'navbarBackButton').css({ display: 'none', paddingRight: '0.5rem', cursor: 'pointer', color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color }).child(
+        el('i').class('fas fa-arrow-left')
+      ).click(() => {
+        layout.navigate('/');
       }),
       el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color, cursor: 'pointer' }).text("Navbar title").click(() => {
         layout.navigate('/');
