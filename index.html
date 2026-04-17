@@ -24,50 +24,37 @@
         layout.addPage({
           path: '/',
           component: () => {
-            return el('div').child([
-              el('h2').text('Home Page'),
-              el('p').text('Use the buttons below to trigger notification, toast, and confirm features.'),
-              el('div').css({ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '1rem' }).child([
-                el('button').text('Show Success Toast').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#16a34a', color: '#fff', cursor: 'pointer' }).click(() => {
-                  layout.toast('Operation successful!', { type: 'success', title: 'Success', duration: 3000 });
-                }),
-                el('button').text('Show Info Notification').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#2563eb', color: '#fff', cursor: 'pointer' }).click(() => {
-                  layout.notify({ title: 'Info', message: 'This is a notification message.', type: 'info', duration: 3500 });
-                }),
-                el('button').text('Show Confirm').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#1f2937', color: '#fff', cursor: 'pointer' }).click(() => {
-                  layout.confirm({
-                    title: 'Delete item?',
-                    message: 'Are you sure you want to delete this item? This action cannot be undone.',
-                    confirmText: 'Yes, delete',
-                    cancelText: 'Cancel',
-                    onConfirm: () => layout.toast('Item deleted', { type: 'success' }),
-                    onCancel: () => layout.toast('Canceled', { type: 'warning' }),
-                  });
-                }),
-                el('button').text('Show Custom Modal').css({ padding: '0.7rem 1rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#8b5cf6', color: '#fff', cursor: 'pointer' }).click(() => {
-                  layout.customModal({
-                    title: 'Custom Modal',
-                    message: el('div').child([
-                      el('p').text('This is a custom modal with el content as message.'),
-                      el('ul').css({ paddingLeft: '1.2rem', marginTop: '0.75rem' }).child([
-                        el('li').text('Supports el object content'),
-                        el('li').text('Supports custom buttons'),
-                      ]),
-                    ]),
-                    buttons: [
-                      {
-                        text: 'Cancel',
-                        variant: 'outline',
-                        onClick: () => layout.toast('Modal dismissed', { type: 'warning' }),
-                      },
-                      {
-                        text: 'Save',
-                        variant: 'primary',
-                        onClick: () => layout.toast('Saved successfully', { type: 'success' }),
-                      },
-                    ],
-                  });
-                }),
+            return el('div').css({ display: 'flex', flexDirection: 'column', gap: '1.5rem' }).child([
+              el('div').css({ padding: '2rem', borderRadius: '24px', background: 'linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%)', color: '#fff', boxShadow: '0 24px 80px rgba(37, 99, 235, 0.18)' }).child([
+                el('h1').text('Create smarter SPA layouts with el.js').css({ fontSize: '2.2rem', fontWeight: '800', margin: '0 0 0.75rem' }),
+                el('p').text('Build responsive pages that adapt to desktop and mobile, with dedicated full-width and login layouts for a cleaner user experience.').css({ fontSize: '1rem', lineHeight: '1.8', maxWidth: '680px', margin: '0 0 1.5rem' }),
+                el('div').css({ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }).child([
+                  el('button').text('Try Full Width').css({ padding: '0.95rem 1.8rem', borderRadius: '999px', border: 'none', backgroundColor: '#fff', color: '#1d4ed8', fontWeight: '700', cursor: 'pointer' }).click(() => layout.navigate('/full')),
+                  el('button').text('Try Login Page').css({ padding: '0.95rem 1.8rem', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.9)', backgroundColor: 'transparent', color: '#fff', cursor: 'pointer' }).click(() => layout.navigate('/login')),
+                ]),
+              ]),
+              el('div').css({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem', alignItems: 'stretch' }).child([
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#fff', boxShadow: '0 16px 40px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.05)' }).child([
+                  el('div').css({ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }).child([
+                    el('i').class('fas fa-mobile-alt').css({ fontSize: '1.25rem', color: '#2563eb' }),
+                    el('h3').text('Responsive by default').css({ margin: 0, fontSize: '1.1rem', fontWeight: '700' }),
+                  ]),
+                  el('p').text('Automatically adjust the layout for desktop and mobile views with a modern SPA experience.').css({ margin: 0, lineHeight: '1.75', color: '#475569' }),
+                ]),
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#fff', boxShadow: '0 16px 40px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.05)' }).child([
+                  el('div').css({ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }).child([
+                    el('i').class('fas fa-expand').css({ fontSize: '1.25rem', color: '#8b5cf6' }),
+                    el('h3').text('Full-width desktop page').css({ margin: 0, fontSize: '1.1rem', fontWeight: '700' }),
+                  ]),
+                  el('p').text('Hide the sidebar on desktop to create content-focused pages with a clean layout.').css({ margin: 0, lineHeight: '1.75', color: '#475569' }),
+                ]),
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#fff', boxShadow: '0 16px 40px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.05)' }).child([
+                  el('div').css({ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }).child([
+                    el('i').class('fas fa-sign-in-alt').css({ fontSize: '1.25rem', color: '#16a34a' }),
+                    el('h3').text('Login screen layout').css({ margin: 0, fontSize: '1.1rem', fontWeight: '700' }),
+                  ]),
+                  el('p').text('Use a focused login page that hides navigation and provides a distraction-free sign-in flow.').css({ margin: 0, lineHeight: '1.75', color: '#475569' }),
+                ]),
               ]),
             ]);
           },
@@ -76,44 +63,90 @@
         layout.addPage({
           path: '/about',
           component: () => {
-            // Async component example - simulating API call
-            return new Promise((resolve) => {
-              setTimeout(() => {
-                resolve(
-                  el('div').child([
-                    el('h2').text('About Page'),
-                    el('p').text('This page was loaded with async component')
-                  ])
-                );
-              }, 1000); // Simulate 1.5s API delay
-            });
+            return el('div').css({ display: 'grid', gap: '1.25rem' }).child([
+              el('div').css({ padding: '1.75rem', borderRadius: '22px', backgroundColor: '#fff', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.06)' }).child([
+                el('h2').text('About the Layout Engine').css({ margin: 0, fontSize: '1.9rem', fontWeight: '800' }),
+                el('p').text('This demo shows how to create a flexible SPA layout with el.js, including responsive sidebar behavior and page-specific layout modes.').css({ margin: '1rem 0 0', lineHeight: '1.75', color: '#475569' }),
+              ]),
+              el('div').css({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }).child([
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#eff6ff', border: '1px solid #dbeafe' }).child([
+                  el('h3').text('Responsive first').css({ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('The layout adapts automatically to mobile and desktop screens.').css({ margin: 0, lineHeight: '1.7', color: '#1e40af' }),
+                ]),
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#f0fdf4', border: '1px solid #dcfce7' }).child([
+                  el('h3').text('Modular page setup').css({ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('Each page is registered through layout.addPage with custom layout flags.').css({ margin: 0, lineHeight: '1.7', color: '#166534' }),
+                ]),
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#fff7ed', border: '1px solid #ffedd5' }).child([
+                  el('h3').text('Clean navigation').css({ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('Navbar and sidebar controls can be toggled based on the active page.').css({ margin: 0, lineHeight: '1.7', color: '#92400e' }),
+                ]),
+              ]),
+            ]);
           },
         })
 
         layout.addPage({
           path: '/contact',
           component: () => {
-            return el('div').text('Contact Page')
+            return el('div').css({ display: 'grid', gap: '1rem' }).child([
+              el('div').css({ padding: '1.75rem', borderRadius: '22px', backgroundColor: '#fff', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.06)' }).child([
+                el('h2').text('Contact Us').css({ margin: 0, fontSize: '1.9rem', fontWeight: '800' }),
+                el('p').text('Have questions or want to learn more? Send a message and we will get back to you soon.').css({ margin: '1rem 0 0', lineHeight: '1.75', color: '#475569' }),
+              ]),
+              el('div').css({ display: 'grid', gap: '1rem' }).child([
+                el('input').attr('type', 'text').attr('placeholder', 'Name').css({ width: '100%', padding: '0.95rem', borderRadius: '0.9rem', border: '1px solid #cbd5e1' }),
+                el('input').attr('type', 'email').attr('placeholder', 'Email address').css({ width: '100%', padding: '0.95rem', borderRadius: '0.9rem', border: '1px solid #cbd5e1' }),
+                el('textarea').attr('placeholder', 'Your message').css({ width: '100%', minHeight: '180px', padding: '0.95rem', borderRadius: '0.9rem', border: '1px solid #cbd5e1', resize: 'vertical' }),
+                el('button').text('Send Message').css({ padding: '0.95rem', borderRadius: '0.9rem', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: '700', cursor: 'pointer' }).click(() => {
+                  layout.toast('Message sent! We will reply shortly.', { type: 'success', title: 'Contact' });
+                }),
+              ]),
+            ]);
           },
         })
 
         layout.addPage({
           path: '/help',
           component: () => {
-            return el('div').child([
-              el('h2').text('Help Page'),
-              el('p').text('Need assistance? This is the help section.'),
-            ])
+            return el('div').css({ display: 'grid', gap: '1.25rem' }).child([
+              el('div').css({ padding: '1.75rem', borderRadius: '22px', backgroundColor: '#fff', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.06)' }).child([
+                el('h2').text('Help Center').css({ margin: 0, fontSize: '1.9rem', fontWeight: '800' }),
+                el('p').text('Need assistance? Use the quick answers below or contact support if you need extra help.').css({ margin: '1rem 0 0', lineHeight: '1.75', color: '#475569' }),
+              ]),
+              el('div').css({ display: 'grid', gap: '1rem' }).child([
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#eef2ff', border: '1px solid #c7d2fe' }).child([
+                  el('h3').text('How do I switch layouts?').css({ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('Use the page config flags to hide the sidebar or the entire layout on specific pages.').css({ margin: 0, lineHeight: '1.7', color: '#3730a3' }),
+                ]),
+                el('div').css({ padding: '1.25rem', borderRadius: '18px', backgroundColor: '#ecfccb', border: '1px solid #d9f99d' }).child([
+                  el('h3').text('How do I return home?').css({ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('Click the navbar title or use the home menu item to navigate back to the start page.').css({ margin: 0, lineHeight: '1.7', color: '#166534' }),
+                ]),
+              ]),
+            ]);
           },
         })
 
         layout.addPage({
           path: '/settings',
           component: () => {
-            return el('div').child([
-              el('h2').text('Settings Page'),
-              el('p').text('Use this page to configure your application settings.'),
-            ])
+            return el('div').css({ display: 'grid', gap: '1.25rem' }).child([
+              el('div').css({ padding: '1.75rem', borderRadius: '22px', backgroundColor: '#fff', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)', border: '1px solid rgba(15, 23, 42, 0.06)' }).child([
+                el('h2').text('Settings').css({ margin: 0, fontSize: '1.9rem', fontWeight: '800' }),
+                el('p').text('Tweak the app behavior and preview layout features.').css({ margin: '1rem 0 0', lineHeight: '1.75', color: '#475569' }),
+              ]),
+              el('div').css({ display: 'grid', gap: '1rem' }).child([
+                el('div').css({ padding: '1.2rem', borderRadius: '18px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }).child([
+                  el('h3').text('Desktop sidebar mode').css({ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: '700' }),
+                  el('p').text('Preview the sidebar hide mode and full-width layout behavior on desktop pages.').css({ margin: 0, lineHeight: '1.75', color: '#334155' }),
+                ]),
+                el('div').css({ padding: '1.2rem', borderRadius: '18px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }).child([
+                  el('h3').text('Theme options').css({ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: '700' }),
+                  el('p').text('Switch between themes and see how the layout adapts to different navbar and sidebar colors.').css({ margin: 0, lineHeight: '1.75', color: '#334155' }),
+                ]),
+              ]),
+            ]);
           },
         })
 
@@ -121,10 +154,22 @@
           path: '/full',
           fullWidthDesktop: true,
           component: () => {
-            return el('div').child([
-              el('h2').text('Full Width Page'),
-              el('p').text('This page hides the sidebar on desktop and uses the full layout width.'),
-            ])
+            return el('div').css({ display: 'grid', gap: '1.5rem' }).child([
+              el('div').css({ padding: '2rem', borderRadius: '24px', backgroundColor: '#1e40af', color: '#fff', boxShadow: '0 24px 80px rgba(30, 64, 175, 0.18)' }).child([
+                el('h2').text('Full Width Desktop Mode').css({ margin: 0, fontSize: '2rem', fontWeight: '800' }),
+                el('p').text('This page demonstrates a full-width desktop layout where the sidebar is hidden and the content spans the available space.').css({ margin: '1rem 0 0', lineHeight: '1.8' }),
+              ]),
+              el('div').css({ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }).child([
+                el('div').css({ padding: '1.5rem', borderRadius: '20px', backgroundColor: '#fff', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)' }).child([
+                  el('h3').text('Clean content area').css({ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('Without the sidebar, the page feels more spacious and content can be presented clearly.').css({ margin: 0, lineHeight: '1.75', color: '#475569' }),
+                ]),
+                el('div').css({ padding: '1.5rem', borderRadius: '20px', backgroundColor: '#eef2ff', boxShadow: '0 18px 50px rgba(15, 23, 42, 0.08)' }).child([
+                  el('h3').text('Back navigation').css({ margin: '0 0 0.75rem', fontSize: '1.1rem', fontWeight: '700' }),
+                  el('p').text('A back button is available in the navbar to help users return to the previous screen easily.').css({ margin: 0, lineHeight: '1.75', color: '#1e429f' }),
+                ]),
+              ]),
+            ]);
           },
         })
 
@@ -132,15 +177,20 @@
           path: '/login',
           hideLayout: true,
           component: () => {
-            return el('div').css({ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }).child([
-              el('div').css({ width: '320px', padding: '2rem', borderRadius: '12px', boxShadow: '0 16px 40px rgba(0,0,0,0.12)', backgroundColor: '#fff' }).child([
-                el('h2').text('Login').css({ marginBottom: '1rem' }),
-                el('input').attr('type', 'text').attr('placeholder', 'Email').css({ width: '100%', padding: '0.85rem', marginBottom: '0.75rem', borderRadius: '0.75rem', border: '1px solid #d1d5db' }),
-                el('input').attr('type', 'password').attr('placeholder', 'Password').css({ width: '100%', padding: '0.85rem', marginBottom: '1rem', borderRadius: '0.75rem', border: '1px solid #d1d5db' }),
-                el('button').text('Sign In').css({ width: '100%', padding: '0.85rem', borderRadius: '0.75rem', border: 'none', backgroundColor: '#2563eb', color: '#fff', cursor: 'pointer' }).click(() => {
-                  layout.toast('Logged in successfully', { type: 'success', title: 'Login' });
-                  layout.navigate('/');
-                }),
+            return el('div').css({ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '70vh', padding: '1rem' }).child([
+              el('div').css({ width: '100%', maxWidth: '400px', padding: '2rem', borderRadius: '18px', boxShadow: '0 24px 80px rgba(15, 23, 42, 0.12)', backgroundColor: '#ffffff' }).child([
+                el('div').css({ marginBottom: '1.5rem' }).child([
+                  el('h2').text('Welcome Back').css({ margin: '0 0 0.5rem', fontSize: '1.85rem', fontWeight: '800' }),
+                  el('p').text('Sign in to access your dashboard and preview layout controls.').css({ margin: 0, lineHeight: '1.75', color: '#475569' }),
+                ]),
+                el('div').css({ display: 'grid', gap: '1rem' }).child([
+                  el('input').attr('type', 'text').attr('placeholder', 'Email Address').css({ width: '100%', padding: '0.95rem', borderRadius: '0.85rem', border: '1px solid #cbd5e1' }),
+                  el('input').attr('type', 'password').attr('placeholder', 'Password').css({ width: '100%', padding: '0.95rem', borderRadius: '0.85rem', border: '1px solid #cbd5e1' }),
+                  el('button').text('Sign In').css({ width: '100%', padding: '0.95rem', borderRadius: '0.85rem', border: 'none', backgroundColor: '#2563eb', color: '#fff', fontWeight: '700', cursor: 'pointer' }).click(() => {
+                    layout.toast('Logged in successfully', { type: 'success', title: 'Login' });
+                    layout.navigate('/');
+                  }),
+                ]),
               ])
             ]);
           },
