@@ -22,6 +22,8 @@
   let navbarMenus = [];
   let currentTheme = 'default';
   let openDropdowns = new Set(); // Track which dropdowns are open
+  let currentRole = null; // RBAC: current user role
+  const middlewares = []; // Middleware stack
 
   // Notification / confirm state
   let toastContainer = null;
@@ -254,6 +256,32 @@
     }
   `;
 
+  // Routing helper
+  function normalizePagePath(path) {
+    const rawPath = String(path || '/');
+    const pathOnly = rawPath.split('?')[0];
+    return pathOnly || '/';
+  }
+
+  // Resolve dynamic routes like /customers/:id/history
+  function resolvePageRoute(path) {
+    if (pages[path]) return path;
+    if (!path) return path;
+    for (const pattern of Object.keys(pages)) {
+      if (!pattern.includes(':')) continue;
+      const patternParts = pattern.split('/');
+      const pathParts = path.split('/');
+      if (patternParts.length !== pathParts.length) continue;
+      let match = true;
+      for (let i = 0; i < patternParts.length; i++) {
+        if (patternParts[i].startsWith(':')) continue;
+        if (patternParts[i] !== pathParts[i]) { match = false; break; }
+      }
+      if (match) return pattern;
+    }
+    return path;
+  }
+
   // Routing functions
   layout.addPage = function(config) {
     pages[config.path] = config;
@@ -267,6 +295,24 @@
   layout.addNavbar = function(menus) {
     navbarMenus = menus;
     renderNavbar();
+  };
+
+  // RBAC: set current user role
+  layout.setRole = function(role) {
+    currentRole = role || null;
+    renderSideMenu();
+    renderNavbar();
+  };
+
+  // RBAC: get current user role
+  layout.getRole = function() {
+    return currentRole;
+  };
+
+  // Middleware: add a function that runs before each page render
+  // fn(path, pageConfig) => { allowed: true/false, redirect: '/path' }
+  layout.middleware = function(fn) {
+    if (typeof fn === 'function') middlewares.push(fn);
   };
 
   function renderNavbar() {
@@ -321,19 +367,48 @@
           el(connector.dropdownMenu).css(dropdownCss).get();
         }),
         el('div').link(connector, 'dropdownMenu').css(cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownMenu).child(
-          navbarMenus.map((item) => {
-            const isActive = currentPage === item.page;
-            return el('a').css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownItem, color: dropdownColor })
-              .class('dropdown-item' + (isActive ? ' active' : ''))
-              .text(item.name)
+          [
+            ...navbarMenus.map((item) => {
+              const isActive = currentPage === item.page;
+              return el('a').css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownItem, color: dropdownColor })
+                .class('dropdown-item' + (isActive ? ' active' : ''))
+                .text(item.name)
+                .click(() => {
+                  dropdownVisible = false;
+                  el(connector.dropdownMenu).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownMenu).get();
+                  layout.navigate(item.page);
+                });
+            }),
+            // Divider
+            el('div').css({ borderTop: '1px solid #e5e7eb', margin: '4px 0' }),
+            // Profile
+            el('a').css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownItem, color: dropdownColor, display: 'flex', alignItems: 'center', gap: '8px' })
+              .class('dropdown-item' + (currentPage === '/profile' ? ' active' : ''))
+              .child([
+                el('i').class('fas fa-user-circle').css({ fontSize: '13px' }),
+                el('span').text(resolveMenuName({ nameKey: 'sidebar.profile', name: 'Profile' })),
+              ])
               .click(() => {
-                // Hide dropdown saat menu di-click
                 dropdownVisible = false;
                 el(connector.dropdownMenu).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownMenu).get();
-                // Navigate ke page
-                layout.navigate(item.page);
-              });
-          })
+                layout.navigate('/profile');
+              }),
+            // Logout
+            el('a').css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownItem, color: '#dc2626', display: 'flex', alignItems: 'center', gap: '8px' })
+              .child([
+                el('i').class('fas fa-sign-out-alt').css({ fontSize: '13px' }),
+                el('span').text(resolveMenuName({ nameKey: 'profile.logout', name: 'Logout' })),
+              ])
+              .click(() => {
+                dropdownVisible = false;
+                el(connector.dropdownMenu).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownMenu).get();
+                (async () => {
+                  try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
+                  if (window.layout) window.layout.setRole(null);
+                  window.location.hash = '#/login';
+                })();
+              }),
+          ]
         )
       ])
     ]).get();
@@ -368,7 +443,8 @@
     setDesktopHideMode(desktopHideMode);
 
     // Load initial page
-    const initialPath = window.location.hash.slice(1) || '/';
+    const rawInitialPath = normalizePagePath(window.location.hash.slice(1) || '/');
+    const initialPath = resolvePageRoute(rawInitialPath);
     if (pages[initialPath]) {
       currentPage = initialPath;
       renderPage(initialPath);
@@ -381,11 +457,10 @@
     // Update menu active state after initial render
     renderSideMenu();
     renderNavbar();
-    updateSidebarState();
+    updateLayoutVisibility();
 
-    if (shouldHideLayoutForPage()) {
-      if (connector.navbar) el(connector.navbar).css({ display: 'none' }).get();
-    }
+    // Make layout visible after all setup is done (prevents flash)
+    el(connector.container).css({ visibility: 'visible' }).get();
   };
 
   layout.setTheme = function(themeName) {
@@ -478,16 +553,22 @@ ${getThemeStyleCSS()}`;
   }
 
   layout.navigate = function(path) {
-    if (pages[path]) {
-      currentPage = path;
-      renderPage(path);
+    const pagePath = resolvePageRoute(normalizePagePath(path));
+    if (!pages[pagePath]) return;
+
+    const currentHash = window.location.hash.slice(1) || '/';
+    if (currentHash !== path) {
       window.location.hash = path;
-      syncSidebarDropdowns();
-      // Re-render sidebar dan navbar to update active state
-      renderSideMenu();
-      renderNavbar();
-      updateSidebarState();
+      return;
     }
+
+    currentPage = pagePath;
+    renderPage(pagePath);
+    syncSidebarDropdowns();
+    // Re-render sidebar dan navbar to update active state
+    renderSideMenu();
+    renderNavbar();
+    updateLayoutVisibility();
   };
 
   function showLoader() {
@@ -531,31 +612,101 @@ ${getThemeStyleCSS()}`;
     }
   }
 
+  function getPageContentStyle() {
+    const baseStyle = cssLayouting[isMobile ? 'mobile' : 'desktop'].pagecontent;
+    const pageConfig = pages[resolvePageRoute(currentPage)] || {};
+    return {
+      ...baseStyle,
+      padding: pageConfig.pageContentPadding !== undefined ? pageConfig.pageContentPadding : baseStyle.padding,
+    };
+  }
+
   function renderPage(path) {
     const pageConfig = pages[path];
     if (!pageConfig) return;
-    
-    // Show loader
-    showLoader();
-    
-    const component = pageConfig.component();
-    
-    // Check if component is a Promise (for async components)
-    if (component && typeof component.then === 'function') {
-      component.then((resolvedComponent) => {
-        el(connector.pagecontent).empty().child(resolvedComponent).get();
+
+    // Run middleware stack
+    (async () => {
+      for (const mw of middlewares) {
+        try {
+          const result = await mw(path, pageConfig);
+          if (result && result.allowed === false) {
+            const redirect = result.redirect || '/';
+            if (redirect !== path) {
+              layout.navigate(redirect);
+            }
+            return;
+          }
+        } catch (e) {
+          console.error('Middleware error:', e);
+        }
+      }
+
+      // RBAC: check page role restriction
+      if (pageConfig.roles && pageConfig.roles.length > 0 && currentRole) {
+        if (!pageConfig.roles.includes(currentRole)) {
+          // Find best allowed page for this role
+          let allowedPage = null;
+          if (currentRole === 'cashier' && pages['/kasir']) {
+            const kc = pages['/kasir'];
+            if (!kc.roles || !kc.roles.length || kc.roles.includes(currentRole)) {
+              allowedPage = '/kasir';
+            }
+          }
+          if (!allowedPage) {
+            allowedPage = Object.keys(pages).find(p => {
+              const pc = pages[p];
+              if (!pc.roles || !pc.roles.length) return true;
+              return pc.roles.includes(currentRole);
+            });
+          }
+          if (allowedPage && allowedPage !== path) {
+            layout.navigate(allowedPage);
+          }
+          return;
+        }
+      }
+
+      // Show loader
+      showLoader();
+
+      const component = pageConfig.component();
+
+      // set page content padding override before render
+      el(connector.pagecontent).css(getPageContentStyle()).get();
+
+      // Check if component is a Promise (for async components)
+      if (component && typeof component.then === 'function') {
+        component.then((resolvedComponent) => {
+          el(connector.pagecontent).empty().child(resolvedComponent).get();
+          if (connector.pagecontent) {
+            const pageContentEl = el(connector.pagecontent).get();
+            pageContentEl.scrollTop = 0;
+            pageContentEl.scrollLeft = 0;
+          }
+          hideLoader();
+        }).catch((error) => {
+          console.error('Error loading page:', error);
+          el(connector.pagecontent).empty().child(
+            el('div').text('Error loading page')
+          ).get();
+          if (connector.pagecontent) {
+            const pageContentEl = el(connector.pagecontent).get();
+            pageContentEl.scrollTop = 0;
+            pageContentEl.scrollLeft = 0;
+          }
+          hideLoader();
+        });
+      } else {
+        el(connector.pagecontent).empty().child(component).get();
+        if (connector.pagecontent) {
+          const pageContentEl = el(connector.pagecontent).get();
+          pageContentEl.scrollTop = 0;
+          pageContentEl.scrollLeft = 0;
+        }
         hideLoader();
-      }).catch((error) => {
-        console.error('Error loading page:', error);
-        el(connector.pagecontent).empty().child(
-          el('div').text('Error loading page')
-        ).get();
-        hideLoader();
-      });
-    } else {
-      el(connector.pagecontent).empty().child(component).get();
-      hideLoader();
-    }
+      }
+    })();
   }
 
   function updateSidebarVisibility() {
@@ -585,20 +736,56 @@ ${getThemeStyleCSS()}`;
   }
 
   function shouldHideLayoutForPage() {
-    const pageConfig = pages[currentPage];
+    const pageConfig = pages[resolvePageRoute(currentPage)];
     return Boolean(pageConfig?.hideLayout);
   }
 
   function shouldHideSidebarForPage() {
-    const pageConfig = pages[currentPage];
+    const pageConfig = pages[resolvePageRoute(currentPage)];
     return Boolean(pageConfig?.fullWidthDesktop || pageConfig?.hideLayout);
+  }
+
+  // Centralized layout visibility control
+  function updateLayoutVisibility() {
+    const hideLayout = shouldHideLayoutForPage();
+    const hideSidebar = shouldHideSidebarForPage();
+
+    // Navbar
+    if (connector.navbar) {
+      if (hideLayout) {
+        el(connector.navbar).css({ display: 'none' }).get();
+      } else {
+        el(connector.navbar).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar).get();
+      }
+    }
+
+    // Sidebar
+    if (connector.sidebar) {
+      if (hideSidebar) {
+        el(connector.sidebar).css({ display: 'none' }).get();
+      } else if (!isMobile && desktopHideMode) {
+        updateDesktopSidebar();
+      } else {
+        updateSidebarVisibility();
+      }
+    }
+
+    // Page content padding
+    if (connector.pagecontent) {
+      el(connector.pagecontent).css(getPageContentStyle()).get();
+    }
+
+    // Back button (show when sidebar is hidden on desktop)
+    if (connector.navbarBackButton) {
+      el(connector.navbarBackButton).css({ display: !isMobile && hideSidebar && !hideLayout ? 'inline-flex' : 'none' }).get();
+    }
   }
 
   function updateSidebarState() {
     if (shouldHideSidebarForPage()) {
       if (!connector.sidebar) return;
       el(connector.sidebar).css({ display: 'none' }).get();
-      el(connector.pagecontent).css(cssLayouting.desktop.pagecontent).get();
+      el(connector.pagecontent).css(getPageContentStyle()).get();
       return;
     }
 
@@ -636,6 +823,10 @@ ${getThemeStyleCSS()}`;
 
   function updateDesktopSidebar() {
     if (!connector.sidebar) return;
+    if (shouldHideSidebarForPage()) {
+      el(connector.sidebar).css({ display: 'none' }).get();
+      return;
+    }
     if (!isMobile && desktopHideMode) {
       if (desktopHoverOpen) {
         // Floating overlay on top of content
@@ -681,7 +872,7 @@ ${getThemeStyleCSS()}`;
   }
 
   function showDesktopSidebarHover() {
-    if (!desktopHideMode || isMobile) return;
+    if (!desktopHideMode || isMobile || shouldHideSidebarForPage()) return;
     sidebarHoverActive = true;
     desktopHoverOpen = true;
     if (sidebarHoverTimeout) {
@@ -692,7 +883,7 @@ ${getThemeStyleCSS()}`;
   }
 
   function hideDesktopSidebarHoverSoon() {
-    if (!desktopHideMode || isMobile) return;
+    if (!desktopHideMode || isMobile || shouldHideSidebarForPage()) return;
     sidebarHoverActive = false;
     if (sidebarHoverTimeout) clearTimeout(sidebarHoverTimeout);
     sidebarHoverTimeout = setTimeout(() => {
@@ -714,6 +905,10 @@ ${getThemeStyleCSS()}`;
 
   function updateSidebarVisibility() {
     if (!connector.sidebar) return;
+    if (shouldHideSidebarForPage()) {
+      el(connector.sidebar).css({ display: 'none' }).get();
+      return;
+    }
     if (isMobile) {
       const sidebarCss = sidebarVisible ? cssLayouting.mobile.sidebarOpen : cssLayouting.mobile.sidebar;
       el(connector.sidebar).css(sidebarCss).get();
@@ -1025,22 +1220,39 @@ ${getThemeStyleCSS()}`;
     );
 
     if (activeDropdown) {
-      openDropdowns.add('dropdown-' + activeDropdown.name.toLowerCase().replace(/\s+/g, '-'));
+      openDropdowns.add('dropdown-' + (activeDropdown.nameKey || activeDropdown.name).toLowerCase().replace(/\s+/g, '-'));
     }
+  }
+
+  function resolveMenuName(item) {
+    if (item.nameKey && window.i18n && typeof window.i18n.t === 'function') {
+      return window.i18n.t(item.nameKey);
+    }
+    return item.name || '';
   }
 
   function renderSideMenu() {
     if (!connector.sidebar) return;
-    
+    const activePage = currentPage || '/';
+
+    // RBAC: filter menus based on current role
+    const filterByRole = (item) => {
+      if (!item.roles || !item.roles.length) return true; // no restriction
+      if (!currentRole) return true; // no role set, allow all
+      return item.roles.includes(currentRole);
+    };
+
     el(connector.sidebar).empty().child(
-      sideMenus.map((item) => {
+      sideMenus.filter(filterByRole).map((item) => {
         // Check if menu has children (dropdown)
         if (item.children && item.children.length > 0) {
-          return createSidebarDropdown(item);
+          const filteredItem = { ...item, children: item.children.filter(filterByRole) };
+          if (filteredItem.children.length === 0) return null;
+          return createSidebarDropdown(filteredItem);
         }
         
         // Regular menu item
-        const isActive = currentPage === item.page;
+        const isActive = activePage === item.page || (item.page !== '/' && activePage.startsWith(item.page + '/'));
         return el('a')
           .cursor('pointer')
           .class('sidebar-item' + (isActive ? ' active' : ''))
@@ -1050,16 +1262,21 @@ ${getThemeStyleCSS()}`;
           })
           .child([
             el('i').marginRight(item.icon ? '0.5rem' : '0').class(item.icon || ''),
-            el('span').text(item.name),
+            el('span').text(resolveMenuName(item)),
           ]);
       })
     ).get();
 
-    updateSidebarVisibility();
+    // Don't call updateSidebarVisibility() here — updateLayoutVisibility() handles it
   }
 
   function createSidebarDropdown(item) {
-    const dropdownId = 'dropdown-' + item.name.toLowerCase().replace(/\s+/g, '-');
+    const dropdownId = 'dropdown-' + (item.nameKey || item.name).toLowerCase().replace(/\s+/g, '-');
+    // Auto-open dropdown if a child is currently active
+    const hasActiveChild = item.children.some((child) => currentPage === child.page);
+    if (hasActiveChild && !openDropdowns.has(dropdownId)) {
+      openDropdowns.add(dropdownId);
+    }
     let isOpen = openDropdowns.has(dropdownId);
     
     const container = el('div').class('sidebar-dropdown-container');
@@ -1075,12 +1292,15 @@ ${getThemeStyleCSS()}`;
         item.children.map((child) => {
           const isActive = currentPage === child.page;
           return el('a')
-            .display('block')
+            .display('flex')
             .cursor('pointer')
             .padding('4px 0.5rem')
             .class('sidebar-dropdown-item' + (isActive ? ' active' : ''))
             .size('14px')
-            .text(child.name)
+            .child([
+              child.icon ? el('i').class(child.icon).css({ fontSize: '12px', marginRight: '0.4rem' }) : null,
+              el('span').text(resolveMenuName(child)),
+            ])
             .click(() => {
               hideMobileSidebar();
               layout.navigate(child.page);
@@ -1108,7 +1328,7 @@ ${getThemeStyleCSS()}`;
       .color('#fff')
       .size('14px')
       .padding('6px 0.5rem')
-      .class('sidebar-item')
+      .class('sidebar-item' + (hasActiveChild ? ' active' : ''))
       .click(() => {
         isOpen = !isOpen;
         if (isOpen) {
@@ -1130,7 +1350,7 @@ ${getThemeStyleCSS()}`;
     // Create left content (icon + text)
     const leftContent = el('div').css({ display: 'flex', alignItems: 'center', gap: '0.5rem' }).child([
       el('i').class(item.icon || ''),
-      el('span').text(item.name),
+      el('span').text(resolveMenuName(item)),
     ]);
     
     toggle.child([leftContent, chevronIcon]);
@@ -1457,7 +1677,7 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
   let layoutContainer = el('div')
   .link(connector, 'container')
   .id('layout-container')
-  .css(cssLayouting[isMobile ? 'mobile' : 'desktop'].container);
+  .css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].container, visibility: 'hidden' });
 
   let navBar = el('nav')
   .link(connector, 'navbar')
@@ -1477,7 +1697,7 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
       ).click(() => {
         layout.navigate('/');
       }),
-      el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color, cursor: 'pointer' }).text("Navbar title").click(() => {
+      el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color, cursor: 'pointer' }).text("Kasir POS").click(() => {
         layout.navigate('/');
       }),
       el('div').link(connector, 'sidebarHideSwitchSlot'),
@@ -1503,28 +1723,18 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
     
     if (wasMobile !== isMobile) {
       el(connector.container).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].container).get();
-      el(connector.navbar).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar).get();
       el(connector.content).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].content).get();
       
       // Toggle hamburger menu visibility
       el(connector.menuToggle).css({ display: isMobile ? 'inline' : 'none' }).get();
-      
-      // Reset sidebar state saat kembali ke desktop
-      if (!isMobile) {
-        sidebarVisible = false;
-        el(connector.sidebar).css(cssLayouting.desktop.sidebar).get();
-      } else {
-        el(connector.sidebar).css(cssLayouting.mobile.sidebar).get();
-      }
-      updateDesktopHoverArea();
 
       if (connector.sidebarHideSwitchSlot) {
         connector.sidebarHideSwitchSlot.style.display = isMobile ? 'none' : 'block';
       }
       renderNavbar();
-      updateSidebarState();
+      updateLayoutVisibility();
       
-      el(connector.pagecontent).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].pagecontent).get();
+      el(connector.pagecontent).css(getPageContentStyle()).get();
     }
   });
 
@@ -1538,15 +1748,16 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
 
   // Handle hash change
   window.addEventListener('hashchange', () => {
-    const hash = window.location.hash.slice(1) || '/';
+    const rawHash = normalizePagePath(window.location.hash.slice(1) || '/');
+    const hash = resolvePageRoute(rawHash);
     if (pages[hash]) {
-      currentPage = hash;
+      currentPage = rawHash;
       renderPage(hash);
       syncSidebarDropdowns();
       // Update active state untuk sidebar dan navbar
       renderSideMenu();
       renderNavbar();
-      updateSidebarState();
+      updateLayoutVisibility();
     }
   });
 
