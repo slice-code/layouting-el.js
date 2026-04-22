@@ -71,10 +71,13 @@ Open `http://localhost:3000/index.html`
 ### Pages
 
 ```js
-layout.addPage({ path: '/about', component: () => el('div').text('About') });
+layout.addPage({
+  path: '/about',
+  component: () => el('div').text('About'),
+});
 ```
 
-Async component (shows loader while waiting):
+Support async page components (loader is shown while waiting):
 
 ```js
 layout.addPage({
@@ -85,27 +88,24 @@ layout.addPage({
 });
 ```
 
-Desktop-only full-width page (hides sidebar on desktop and shows a back button in navbar):
+Page options:
+
+- `fullWidthDesktop: true` — hide sidebar on desktop and show a navbar back button
+- `hideLayout: true` — hide navbar and sidebar completely
+- `pageContentPadding: '0.5rem'` — override default page padding
+- `roles: ['admin', 'editor']` — RBAC access control for page rendering
 
 ```js
 layout.addPage({
-  path: '/full',
-  fullWidthDesktop: true,
-  component: () => el('div').text('Full width content with no sidebar'),
-});
-```
-
-Login page (hides navbar and sidebar completely, useful for auth screens):
-
-```js
-layout.addPage({
-  path: '/login',
-  hideLayout: true,
-  component: () => el('div').text('Login page content'),
+  path: '/admin',
+  roles: ['admin'],
+  component: () => el('div').text('Admin dashboard'),
 });
 ```
 
 > The navbar title is also clickable and navigates to `/` (home).
+
+Dynamic routes are supported too, for example `/users/:id/profile`.
 
 ---
 
@@ -125,23 +125,60 @@ layout.addSideMenu([
 ]);
 ```
 
-- Only one group open at a time (accordion)
+Sidebar features:
+
+- Only one dropdown group opens at a time (accordion behavior)
 - Active group auto-opens on page load or `hashchange`
+- Support `roles` on sidebar items to hide menu entries based on current role
+
+```js
+layout.addSideMenu([
+  { name: 'Admin', page: '/admin', roles: ['admin'] },
+]);
+```
 
 ---
 
 ### Navbar
 
 ```js
-// Via global shorthand (set by layout.js)
-addNavbar([
+// Direct API
+layout.addNavbar([
   { name: 'Home', page: '/' },
   { name: 'About', page: '/about' },
 ]);
 
-// Or directly
-layout.addNavbar([...]);
+// Global shorthand available after layout.js loads
+addNavbar([
+  { name: 'Home', page: '/' },
+]);
 ```
+
+---
+
+### RBAC / Roles
+
+```js
+layout.setRole('editor');
+const currentRole = layout.getRole();
+```
+
+The layout filters pages and menus based on `roles` defined on each page or menu item.
+
+---
+
+### Middleware
+
+```js
+layout.middleware(async (path, pageConfig) => {
+  if (pageConfig.roles && !userHasAccess()) {
+    return { allowed: false, redirect: '/login' };
+  }
+  return { allowed: true };
+});
+```
+
+Middleware runs before every page render and can cancel or redirect navigation.
 
 ---
 
@@ -173,10 +210,10 @@ setLayoutTheme('dark');
 layout.setTheme('dark');
 ```
 
-Custom theme:
+Create and apply a custom theme:
 
 ```js
-setCustomTheme({
+layout.setCustomTheme({
   navbarBg: '#1a1a2e',
   navbarColor: '#fff',
   sidebarBg: '#16213e',
@@ -211,6 +248,12 @@ layout.confirm({
 });
 ```
 
+You can also close the confirm programmatically:
+
+```js
+layout.closeConfirm();
+```
+
 ---
 
 ### Custom Modal
@@ -222,11 +265,13 @@ layout.customModal({
     el('p').text('Content built with el.js'),
   ]),
   buttons: [
-    { text: 'Cancel', variant: 'outline', onClick: () => {} },
+    { text: 'Cancel', variant: 'outline', onClick: () => layout.closeModal() },
     { text: 'Save',   variant: 'primary', onClick: () => layout.toast('Saved') },
   ],
 });
 ```
+
+Aliases: `layout.modal()` and `layout.customModal()` both work.
 
 `message` accepts: `string`, `el()` wrapper, or native `HTMLElement`.
 
