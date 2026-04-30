@@ -558,6 +558,7 @@ ${getThemeStyleCSS()}`;
 
     const currentHash = window.location.hash.slice(1) || '/';
     if (currentHash !== path) {
+      showLoader();
       window.location.hash = path;
       return;
     }
@@ -625,6 +626,9 @@ ${getThemeStyleCSS()}`;
     const pageConfig = pages[path];
     if (!pageConfig) return;
 
+    // Show loader immediately before middleware and async component work.
+    showLoader();
+
     // Run middleware stack
     (async () => {
       for (const mw of middlewares) {
@@ -666,9 +670,6 @@ ${getThemeStyleCSS()}`;
           return;
         }
       }
-
-      // Show loader
-      showLoader();
 
       const component = pageConfig.component();
 
