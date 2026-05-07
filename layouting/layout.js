@@ -9,10 +9,10 @@
   // define app
   let app = document.getElementById('app') || null;
 
-  if(!app)
+  if (!app)
     throw new Error('App element not found');
 
-  if(typeof el === 'undefined')
+  if (typeof el === 'undefined')
     throw new Error('el.js not load please load lib https://unpkg.com/@slice-code/el.js@1.0.6/el.js');
 
   // Routing state
@@ -21,6 +21,7 @@
   let sideMenus = [];
   let navbarMenus = [];
   let currentTheme = 'default';
+  let navbarTitleText = 'Core App'; // Default navbar title
   let openDropdowns = new Set(); // Track which dropdowns are open
   let currentRole = null; // RBAC: current user role
   const middlewares = []; // Middleware stack
@@ -283,41 +284,53 @@
   }
 
   // Routing functions
-  layout.addPage = function(config) {
+  layout.addPage = function (config) {
     pages[config.path] = config;
   };
 
-  layout.addSideMenu = function(menus) {
+  // Check if a route path is registered
+  layout.isValidRoute = function (path) {
+    return !!pages[path];
+  };
+
+  // Check if a route is a CRUD dynamic route (/resource/create, /resource/edit/:id)
+  layout.isCrudDynamicRoute = function (path) {
+    const createPattern = /^\/[^\/]+\/create$/;
+    const editPattern = /^\/[^\/]+\/edit\/[^\/]+$/;
+    return createPattern.test(path) || editPattern.test(path);
+  };
+
+  layout.addSideMenu = function (menus) {
     sideMenus = menus;
     renderSideMenu();
   };
 
-  layout.addNavbar = function(menus) {
+  layout.addNavbar = function (menus) {
     navbarMenus = menus;
     renderNavbar();
   };
 
   // RBAC: set current user role
-  layout.setRole = function(role) {
+  layout.setRole = function (role) {
     currentRole = role || null;
     renderSideMenu();
     renderNavbar();
   };
 
   // RBAC: get current user role
-  layout.getRole = function() {
+  layout.getRole = function () {
     return currentRole;
   };
 
   // Middleware: add a function that runs before each page render
   // fn(path, pageConfig) => { allowed: true/false, redirect: '/path' }
-  layout.middleware = function(fn) {
+  layout.middleware = function (fn) {
     if (typeof fn === 'function') middlewares.push(fn);
   };
 
   function renderNavbar() {
     if (!connector.navbarActions) return;
-    
+
     if (shouldHideLayoutForPage()) {
       if (connector.navbar) {
         el(connector.navbar).css({ display: 'none' }).get();
@@ -328,7 +341,7 @@
     if (connector.navbar) {
       el(connector.navbar).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar).get();
     }
-    
+
     const dropdownColor = '#333';
 
     const switchTrackStyle = {
@@ -403,7 +416,7 @@
                 dropdownVisible = false;
                 el(connector.dropdownMenu).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].dropdownMenu).get();
                 (async () => {
-                  try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) {}
+                  try { await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }); } catch (e) { }
                   if (window.layout) window.layout.setRole(null);
                   window.location.hash = '#/login';
                 })();
@@ -438,7 +451,7 @@
     }
   }
 
-  layout.render = function() {
+  layout.render = function () {
     loadDesktopHideMode();
     setDesktopHideMode(desktopHideMode);
 
@@ -463,7 +476,7 @@
     el(connector.container).css({ visibility: 'visible' }).get();
   };
 
-  layout.setTheme = function(themeName) {
+  layout.setTheme = function (themeName) {
     if (!themes[themeName]) {
       console.warn(`Theme '${themeName}' not found, using default`);
       themeName = 'default';
@@ -472,7 +485,15 @@
     applyTheme();
   };
 
-  layout.setCustomTheme = function(config) {
+  // Set navbar title text
+  layout.setNavbarTitle = function (title) {
+    navbarTitleText = title || 'Core App';
+    if (connector.navbarTitle) {
+      el(connector.navbarTitle).text(navbarTitleText).get();
+    }
+  };
+
+  layout.setCustomTheme = function (config) {
     const themeName = 'custom';
     themes[themeName] = {
       navbar: {
@@ -503,37 +524,37 @@
 
   function applyTheme() {
     const theme = themes[currentTheme];
-    
+
     // Update navbar
     if (connector.navbar) {
       const navbarCss = cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar;
       navbarCss.backgroundColor = theme.navbar.backgroundColor;
       navbarCss.color = theme.navbar.color;
       el(connector.navbar).css(navbarCss).get();
-      
+
       // Update navbar title color
       if (connector.navbarTitle) {
         el(connector.navbarTitle).css({ color: theme.navbar.color }).get();
       }
     }
-    
+
     // Update sidebar
     if (connector.sidebar) {
       const sidebarCss = cssLayouting[isMobile ? 'mobile' : 'desktop'].sidebar;
       sidebarCss.backgroundColor = theme.sidebar.backgroundColor;
       el(connector.sidebar).css(sidebarCss).get();
-      
+
       // Update sidebar open state for mobile
       const sidebarOpenCss = cssLayouting.mobile.sidebarOpen;
       sidebarOpenCss.backgroundColor = theme.sidebar.backgroundColor;
-      
+
       // Update sidebar text color
       const sidebarItems = connector.sidebar.querySelectorAll('a');
       sidebarItems.forEach(item => {
         el(item).css({ color: theme.sidebar.color }).get();
       });
     }
-    
+
     // Update dropdown item colors consistently for white dropdown background
     const dropdownItems = document.querySelectorAll('.dropdown-item');
     dropdownItems.forEach(item => {
@@ -543,7 +564,7 @@
     dropdownActiveItems.forEach(item => {
       el(item).css({ color: '#000', fontWeight: 'bold' }).get();
     });
-    
+
     // Update hover styles based on navbar theme
     const styleEl = document.querySelector('style[data-theme-style]');
     if (styleEl) {
@@ -552,14 +573,37 @@ ${getThemeStyleCSS()}`;
     }
   }
 
-  layout.navigate = function(path) {
+  layout.navigate = function (path, replace = false) {
     const pagePath = resolvePageRoute(normalizePagePath(path));
+
+    // Handle dynamic CRUD routes (/resource/create, /resource/edit/:id)
+    const crudDynamic = isCrudDynamicRoute(path);
+    if (crudDynamic) {
+      const currentHash = window.location.hash.slice(1) || '/';
+      if (currentHash !== path) {
+        showLoader();
+        if (replace) {
+          window.location.replace('#' + path);
+        } else {
+          window.location.hash = path;
+        }
+        return;
+      }
+      // Already on this path, trigger render
+      triggerCrudDynamicRoute(path);
+      return;
+    }
+
     if (!pages[pagePath]) return;
 
     const currentHash = window.location.hash.slice(1) || '/';
     if (currentHash !== path) {
       showLoader();
-      window.location.hash = path;
+      if (replace) {
+        window.location.replace('#' + path);
+      } else {
+        window.location.hash = path;
+      }
       return;
     }
 
@@ -572,9 +616,37 @@ ${getThemeStyleCSS()}`;
     updateLayoutVisibility();
   };
 
+  // Check if path is a CRUD dynamic route
+  function isCrudDynamicRoute(path) {
+    const createPattern = /^\/[^/]+\/create$/;
+    const editPattern = /^\/[^/]+\/edit\/[^/]+$/;
+    return createPattern.test(path) || editPattern.test(path);
+  }
+
+  // Trigger CRUD dynamic route (create or edit form)
+  function triggerCrudDynamicRoute(path) {
+    const createMatch = path.match(/^\/([^\/]+)\/create$/);
+    const editMatch = path.match(/^\/([^\/]+)\/edit\/(.+)$/);
+
+    if (createMatch) {
+      const resource = createMatch[1];
+      // Trigger create form for this resource
+      if (typeof window.triggerCrudCreate === 'function') {
+        window.triggerCrudCreate(resource);
+      }
+    } else if (editMatch) {
+      const resource = editMatch[1];
+      const id = editMatch[2];
+      // Trigger edit form for this resource
+      if (typeof window.triggerCrudEdit === 'function') {
+        window.triggerCrudEdit(resource, id);
+      }
+    }
+  }
+
   function showLoader() {
     if (!connector.pagecontent) return;
-    
+
     const loader = el('div').css({
       display: 'flex',
       justifyContent: 'center',
@@ -591,7 +663,7 @@ ${getThemeStyleCSS()}`;
         animation: 'spin 1s linear infinite',
       })
     ).id('page-loader');
-    
+
     // Add animation CSS if not exists
     if (!document.querySelector('style[data-loader-style]')) {
       const styleEl = el('style').textContent(`
@@ -602,7 +674,7 @@ ${getThemeStyleCSS()}`;
       `).attr('data-loader-style', 'true').get();
       document.head.appendChild(styleEl);
     }
-    
+
     el(connector.pagecontent).empty().child(loader).get();
   }
 
@@ -1056,83 +1128,117 @@ ${getThemeStyleCSS()}`;
 
     const title = options.title || '';
     const content = options.content ?? options.message ?? '';
+    const footer = options.footer || null; // Custom footer element
     const buttons = Array.isArray(options.buttons) ? options.buttons : [];
     const dismissible = options.dismissible !== false;
+    const size = options.size || 'medium'; // 'small', 'medium', 'large', 'full'
 
     currentModalOptions = { dismissible };
 
-    const body = el('div').css({ marginBottom: '1rem', color: '#374151' });
+    // Size configurations
+    const sizeConfig = {
+      small: { width: 'min(95%, 420px)', maxHeight: '70vh' },
+      medium: { width: 'min(95%, 600px)', maxHeight: '80vh' },
+      large: { width: 'min(95%, 900px)', maxHeight: '85vh' },
+      full: { width: 'min(95%, 1200px)', maxHeight: '90vh' }
+    };
+
+    const config = sizeConfig[size] || sizeConfig.medium;
+
+    // Create scrollable body container
+    const bodyContainer = el('div').css({
+      maxHeight: config.maxHeight,
+      overflowY: 'auto',
+      marginBottom: footer ? '0' : '1rem',
+      color: '#374151',
+      paddingRight: '0.5rem' // Space for scrollbar
+    });
+
     if (typeof content === 'string') {
-      body.text(content);
+      bodyContainer.text(content);
     } else if (content && typeof content.get === 'function') {
-      body.child(content);
+      bodyContainer.child(content);
     } else if (content instanceof Node) {
-      body.child(el('div').child([content]));
+      bodyContainer.child(el('div').child([content]));
     } else {
-      body.text('');
+      bodyContainer.text('');
     }
 
-    const actionButtons = buttons.length
-      ? buttons.map((button) => {
-          return el('button')
-            .text(button.text || 'Action')
-            .css({
-              padding: '0.7rem 1rem',
-              borderRadius: '0.75rem',
-              border: button.variant === 'outline' ? '1px solid #d1d5db' : 'none',
-              backgroundColor: button.variant === 'secondary' ? '#6b7280' : button.variant === 'outline' ? '#fff' : '#1d4ed8',
-              color: button.variant === 'outline' ? '#111' : '#fff',
-              cursor: 'pointer',
-            })
-            .click(() => {
-              if (button.onClick) button.onClick();
-              if (button.closeOnClick !== false) closeModal();
-            });
+    // Use custom footer or default buttons
+    let footerElement;
+    if (footer) {
+      footerElement = footer;
+    } else if (buttons.length) {
+      const actionButtons = buttons.map((button) => {
+        return el('button')
+          .text(button.text || 'Action')
+          .css({
+            padding: '0.7rem 1rem',
+            borderRadius: '0.75rem',
+            border: button.variant === 'outline' ? '1px solid #d1d5db' : 'none',
+            backgroundColor: button.variant === 'secondary' ? '#6b7280' : button.variant === 'outline' ? '#fff' : '#1d4ed8',
+            color: button.variant === 'outline' ? '#111' : '#fff',
+            cursor: 'pointer',
+          })
+          .click(() => {
+            if (button.onClick) button.onClick();
+            if (button.closeOnClick !== false) closeModal();
+          });
+      });
+      footerElement = el('div').css({ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }).child(actionButtons);
+    } else {
+      footerElement = el('button')
+        .text('Close')
+        .css({
+          padding: '0.7rem 1rem',
+          borderRadius: '0.75rem',
+          border: 'none',
+          backgroundColor: '#1d4ed8',
+          color: '#fff',
+          cursor: 'pointer',
         })
-      : [
-          el('button')
-            .text('Close')
-            .css({
-              padding: '0.7rem 1rem',
-              borderRadius: '0.75rem',
-              border: 'none',
-              backgroundColor: '#1d4ed8',
-              color: '#fff',
-              cursor: 'pointer',
-            })
-            .click(closeModal),
-        ];
+        .click(closeModal);
+    }
+
+    const children = [
+      el('div').css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }).child([
+        el('div').child([
+          title ? el('h3').css({ margin: '0 0 0.75rem', fontSize: '1.2rem' }).text(title) : el('span'),
+        ]),
+        el('button')
+          .text('×')
+          .css({
+            background: 'transparent',
+            border: 'none',
+            color: '#111',
+            fontSize: '1.2rem',
+            cursor: 'pointer',
+            lineHeight: '1',
+          })
+          .click(closeModal),
+      ]),
+      bodyContainer
+    ];
+
+    // Add footer if exists
+    if (footerElement) {
+      children.push(footerElement);
+    }
 
     const dialogBox = el('div')
       .css({
-        width: 'min(95%, 480px)',
+        width: config.width,
+        maxHeight: config.maxHeight,
         backgroundColor: '#fff',
         borderRadius: '1rem',
         padding: '1.25rem',
         boxShadow: '0 24px 80px rgba(0,0,0,0.18)',
         color: '#111',
         pointerEvents: 'auto',
+        display: 'flex',
+        flexDirection: 'column'
       })
-      .child([
-        el('div').css({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }).child([
-          el('div').child([
-            title ? el('h3').css({ margin: '0 0 0.75rem', fontSize: '1.2rem' }).text(title) : el('span'),
-          ]),
-          el('button')
-            .text('×')
-            .css({
-              background: 'transparent',
-              border: 'none',
-              color: '#111',
-              fontSize: '1.2rem',
-              cursor: 'pointer',
-              lineHeight: '1',
-            })
-            .click(closeModal),
-        ]),
-        body,
-        el('div').css({ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', flexWrap: 'wrap' }).child(actionButtons),
-      ])
+      .child(children)
       .get();
 
     dialogContainer.innerHTML = '';
@@ -1147,8 +1253,8 @@ ${getThemeStyleCSS()}`;
     const message = options.message || '';
     const confirmText = options.confirmText || 'OK';
     const cancelText = options.cancelText || 'Cancel';
-    const onConfirm = typeof options.onConfirm === 'function' ? options.onConfirm : () => {};
-    const onCancel = typeof options.onCancel === 'function' ? options.onCancel : () => {};
+    const onConfirm = typeof options.onConfirm === 'function' ? options.onConfirm : () => { };
+    const onCancel = typeof options.onCancel === 'function' ? options.onCancel : () => { };
     const dismissible = options.dismissible !== false;
 
     currentConfirmOptions = { dismissible };
@@ -1251,10 +1357,12 @@ ${getThemeStyleCSS()}`;
           if (filteredItem.children.length === 0) return null;
           return createSidebarDropdown(filteredItem);
         }
-        
+
         // Regular menu item
         const isActive = activePage === item.page || (item.page !== '/' && activePage.startsWith(item.page + '/'));
         return el('a')
+          .display('flex')
+          .items('center')
           .cursor('pointer')
           .class('sidebar-item' + (isActive ? ' active' : ''))
           .click(() => {
@@ -1279,9 +1387,9 @@ ${getThemeStyleCSS()}`;
       openDropdowns.add(dropdownId);
     }
     let isOpen = openDropdowns.has(dropdownId);
-    
+
     const container = el('div').class('sidebar-dropdown-container');
-    
+
     // Create menu container — apply initial open/close state
     const menuContainer = el('div')
       .id(dropdownId)
@@ -1294,6 +1402,7 @@ ${getThemeStyleCSS()}`;
           const isActive = currentPage === child.page;
           return el('a')
             .display('flex')
+            .items('center')
             .cursor('pointer')
             .padding('4px 0.5rem')
             .class('sidebar-dropdown-item' + (isActive ? ' active' : ''))
@@ -1308,7 +1417,7 @@ ${getThemeStyleCSS()}`;
             });
         })
       );
-    
+
     // Create chevron icon — apply initial rotation state
     const chevronIcon = el('i')
       .class('fas fa-chevron-right')
@@ -1317,11 +1426,11 @@ ${getThemeStyleCSS()}`;
         transition: 'transform 0.2s',
         transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
       });
-    
+
     // Toggle button with chevron icon
     const toggle = el('a')
       .cursor('pointer')
-      .css({ 
+      .css({
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center'
@@ -1347,15 +1456,15 @@ ${getThemeStyleCSS()}`;
           transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
         });
       });
-    
+
     // Create left content (icon + text)
     const leftContent = el('div').css({ display: 'flex', alignItems: 'center', gap: '0.5rem' }).child([
       el('i').class(item.icon || ''),
       el('span').text(resolveMenuName(item)),
     ]);
-    
+
     toggle.child([leftContent, chevronIcon]);
-    
+
     container.child([toggle, menuContainer]);
     return container;
   }
@@ -1649,11 +1758,11 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
       name: 'Menu 1',
       url: '#',
     }
-    ,{
+    , {
       name: 'Menu 2',
       url: '#',
     }
-    ,{
+    , {
       name: 'Menu 3',
       url: '#',
     }
@@ -1665,67 +1774,67 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
       icon: 'fas fa-home',
       url: '#',
     }
-    ,{
+    , {
       name: 'Menu 2',
       url: '#',
     }
-    ,{
+    , {
       name: 'Menu 3',
       url: '#',
     }
   ];
-  
+
   let layoutContainer = el('div')
-  .link(connector, 'container')
-  .id('layout-container')
-  .css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].container, visibility: 'hidden' });
+    .link(connector, 'container')
+    .id('layout-container')
+    .css({ ...cssLayouting[isMobile ? 'mobile' : 'desktop'].container, visibility: 'hidden' });
 
   let navBar = el('nav')
-  .link(connector, 'navbar')
-  .id('nav-bar')
-  .css(cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar)
-  .child([
-    el('div').css({ display: 'flex', alignItems: 'center', gap: '0.75rem' }).child([
-      el('a').link(connector, 'menuToggle').css({ display: isMobile ? 'inline' : 'none', paddingRight: '0.5rem', cursor: 'pointer' }).child(
-        el('i').class('fas fa-bars')
-      ).click(() => {
-        sidebarVisible = !sidebarVisible;
-        const sidebarCss = sidebarVisible ? cssLayouting.mobile.sidebarOpen : cssLayouting.mobile.sidebar;
-        el(connector.sidebar).css(sidebarCss).get();
-      }),
-      el('a').link(connector, 'navbarBackButton').css({ display: 'none', paddingRight: '0.5rem', cursor: 'pointer', color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color }).child(
-        el('i').class('fas fa-arrow-left')
-      ).click(() => {
-        layout.navigate('/');
-      }),
-      el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color, cursor: 'pointer' }).text("Kasir POS").click(() => {
-        layout.navigate('/');
-      }),
-      el('div').link(connector, 'sidebarHideSwitchSlot'),
-    ]),
-    el('div').link(connector, 'navbarActions').css({ display: 'flex', alignItems: 'center', gap: '0.75rem' }).child([])
-  ]);
+    .link(connector, 'navbar')
+    .id('nav-bar')
+    .css(cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar)
+    .child([
+      el('div').css({ display: 'flex', alignItems: 'center', gap: '0.75rem' }).child([
+        el('a').link(connector, 'menuToggle').css({ display: isMobile ? 'inline' : 'none', paddingRight: '0.5rem', cursor: 'pointer' }).child(
+          el('i').class('fas fa-bars')
+        ).click(() => {
+          sidebarVisible = !sidebarVisible;
+          const sidebarCss = sidebarVisible ? cssLayouting.mobile.sidebarOpen : cssLayouting.mobile.sidebar;
+          el(connector.sidebar).css(sidebarCss).get();
+        }),
+        el('a').link(connector, 'navbarBackButton').css({ display: 'none', paddingRight: '0.5rem', cursor: 'pointer', color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color }).child(
+          el('i').class('fas fa-arrow-left')
+        ).click(() => {
+          layout.navigate('/');
+        }),
+        el('a').link(connector, 'navbarTitle').size('16px').css({ color: cssLayouting[isMobile ? 'mobile' : 'desktop'].navBar.color, cursor: 'pointer' }).text(navbarTitleText).click(() => {
+          layout.navigate('/');
+        }),
+        el('div').link(connector, 'sidebarHideSwitchSlot'),
+      ]),
+      el('div').link(connector, 'navbarActions').css({ display: 'flex', alignItems: 'center', gap: '0.75rem' }).child([])
+    ]);
 
 
   layoutContainer.child(navBar);
 
   layoutContainer.child([
     el('div').link(connector, 'content').css(cssLayouting[isMobile ? 'mobile' : 'desktop'].content)
-    .child([
-      el('div').css(cssLayouting[isMobile ? 'mobile' : 'desktop'].sidebar).link(connector, 'sidebar')
-      .child([]),
-      el('div').css(cssLayouting[isMobile ? 'mobile' : 'desktop'].pagecontent).link(connector, 'pagecontent')
-    ])
+      .child([
+        el('div').css(cssLayouting[isMobile ? 'mobile' : 'desktop'].sidebar).link(connector, 'sidebar')
+          .child([]),
+        el('div').css(cssLayouting[isMobile ? 'mobile' : 'desktop'].pagecontent).link(connector, 'pagecontent')
+      ])
   ]);
 
   window.addEventListener('resize', () => {
     const wasMobile = isMobile;
     isMobile = window.innerWidth <= 768 ? true : false;
-    
+
     if (wasMobile !== isMobile) {
       el(connector.container).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].container).get();
       el(connector.content).css(cssLayouting[isMobile ? 'mobile' : 'desktop'].content).get();
-      
+
       // Toggle hamburger menu visibility
       el(connector.menuToggle).css({ display: isMobile ? 'inline' : 'none' }).get();
 
@@ -1734,7 +1843,7 @@ ${getThemeStyleCSS()}`).attr('data-theme-style', 'true').get();
       }
       renderNavbar();
       updateLayoutVisibility();
-      
+
       el(connector.pagecontent).css(getPageContentStyle()).get();
     }
   });

@@ -9,11 +9,13 @@ A lightweight SPA layout module built on **el.js**. Provides navbar, sidebar, ro
 ## 📁 Project Structure
 
 ```
-layouting/
+.
 ├── index.html          # Demo page
+├── practice.html       # Practice page
 ├── el.js               # el.js DOM library
 ├── layouting/
 │   └── layout.js       # Layout engine
+├── index.js            # Entry script
 └── README.md
 ```
 
@@ -107,6 +109,34 @@ layout.addPage({
 
 Dynamic routes are supported too, for example `/users/:id/profile`.
 
+### CRUD Dynamic Routes
+
+The layout automatically recognizes CRUD-style paths and triggers global hooks:
+
+| Pattern | Example | Window Hook |
+|---------|---------|-------------|
+| `/resource/create` | `/products/create` | `window.triggerCrudCreate(resource)` |
+| `/resource/edit/:id` | `/products/edit/42` | `window.triggerCrudEdit(resource, id)` |
+
+Register handlers in your app:
+
+```js
+window.triggerCrudCreate = (resource) => {
+  console.log('Create form for', resource);
+};
+
+window.triggerCrudEdit = (resource, id) => {
+  console.log('Edit', resource, 'ID:', id);
+};
+```
+
+Check helpers:
+
+```js
+layout.isCrudDynamicRoute('/products/create'); // true
+layout.isValidRoute('/about');                // true if registered
+```
+
 ---
 
 ### Sidebar
@@ -130,12 +160,16 @@ Sidebar features:
 - Only one dropdown group opens at a time (accordion behavior)
 - Active group auto-opens on page load or `hashchange`
 - Support `roles` on sidebar items to hide menu entries based on current role
+- Support `nameKey` for i18n integration (falls back to `name`)
 
 ```js
 layout.addSideMenu([
   { name: 'Admin', page: '/admin', roles: ['admin'] },
+  { nameKey: 'sidebar.settings', name: 'Settings', page: '/settings', icon: 'fas fa-cog' },
 ]);
 ```
+
+> If `window.i18n.t()` is available, the layout uses `nameKey` to resolve menu labels. Otherwise it falls back to `name`.
 
 ---
 
@@ -152,6 +186,14 @@ layout.addNavbar([
 addNavbar([
   { name: 'Home', page: '/' },
 ]);
+```
+
+The navbar dropdown automatically includes a **Profile** entry (navigates to `/profile`) and a **Logout** entry (POSTs to `/api/auth/logout`, clears role, and redirects to `#/login`).
+
+Set a custom navbar title:
+
+```js
+layout.setNavbarTitle('My Application');
 ```
 
 ---
@@ -243,6 +285,7 @@ layout.confirm({
   message: 'This cannot be undone.',
   confirmText: 'Yes, delete',
   cancelText: 'Cancel',
+  dismissible: true,  // click outside to close (default true)
   onConfirm: () => layout.toast('Deleted', { type: 'success' }),
   onCancel: () => layout.toast('Cancelled', { type: 'warning' }),
 });
@@ -264,9 +307,11 @@ layout.customModal({
   message: el('div').child([
     el('p').text('Content built with el.js'),
   ]),
+  size: 'medium',          // 'small' | 'medium' | 'large' | 'full'
+  dismissible: true,       // click outside to close (default true)
   buttons: [
     { text: 'Cancel', variant: 'outline', onClick: () => layout.closeModal() },
-    { text: 'Save',   variant: 'primary', onClick: () => layout.toast('Saved') },
+    { text: 'Save',   variant: 'primary', onClick: () => layout.toast('Saved'), closeOnClick: true },
   ],
 });
 ```
@@ -276,6 +321,16 @@ Aliases: `layout.modal()` and `layout.customModal()` both work.
 `message` accepts: `string`, `el()` wrapper, or native `HTMLElement`.
 
 Button `variant`: `'primary'` (default blue) | `'secondary'` (gray) | `'outline'` (white/bordered).
+
+Use a custom footer element instead of buttons:
+
+```js
+layout.customModal({
+  title: 'Details',
+  message: 'Content here',
+  footer: el('div').text('Custom footer'),
+});
+```
 
 Close manually:
 
@@ -317,15 +372,20 @@ A toggle switch appears in the navbar (desktop only) next to the title. When act
 | Feature | Details |
 |---|---|
 | Hash routing | `#/path` based SPA navigation |
+| Dynamic routes | Parameterized routes like `/users/:id/profile` |
+| CRUD dynamic routes | Auto-detect `/create` and `/edit/:id` patterns |
 | Async pages | Promise-based component loading with spinner |
 | Sidebar groups | Accordion dropdown, auto-opens for active route |
 | Themes | 11 built-in + custom |
 | Toast | 4 types, auto-dismiss, close button |
-| Confirm | OK/Cancel callbacks |
-| Custom modal | el.js content, custom buttons |
+| Confirm | OK/Cancel callbacks, dismissible overlay |
+| Custom modal | el.js content, custom buttons, 4 sizes, custom footer |
+| RBAC | Role-based page & menu filtering |
+| Middleware | Pre-render guards with redirect support |
 | Desktop hide | Toggle switch + hover peek overlay |
 | localStorage | Sidebar hide state persisted |
 | Mobile | Overlay sidebar, hide switch hidden |
+| i18n ready | `nameKey` support via `window.i18n.t()` |
 
 ---
 
